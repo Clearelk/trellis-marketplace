@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "codeg-visible",
+      "type": "workflow",
+      "name": "Codeg-visible Trellis Workflow",
+      "description": "Trellis workflow variant that routes Phase 2 implementation and check through Codeg-managed delegation: unanswered runner choices default after 30 seconds to CodeBuddy for execution and Codex for checking; delegate_to_agent dispatches them.",
+      "path": "workflows/codeg-visible.md"
+    }
+  ]
+}
