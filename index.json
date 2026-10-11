@@ -5,7 +5,7 @@
       "id": "codeg-visible",
       "type": "workflow",
       "name": "Codeg-visible Trellis Workflow",
-      "description": "Trellis workflow variant that routes Phase 2 implementation and check through Codeg-managed delegation: unanswered runner choices default after 30 seconds to CodeBuddy for execution and Codex for checking; delegate_to_agent dispatches them.",
+      "description": "Trellis workflow variant that generates a Chinese planning review and waits for explicit user confirmation before implementation, then routes Phase 2 implementation and check through Codeg-managed delegation: unanswered runner choices default after 30 seconds to CodeBuddy for execution and Codex for checking; delegate_to_agent dispatches them.",
       "path": "workflows/codeg-visible.md"
     }
   ]

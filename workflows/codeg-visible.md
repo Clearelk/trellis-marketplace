@@ -39,7 +39,7 @@ python3 ./.trellis/scripts/get_context.py --mode packages   # list packages / la
 
 ### Task System
 
-Every task has its own directory under `.trellis/tasks/{MM-DD-name}/` holding `task.json`, `prd.md`, optional `design.md`, optional `implement.md`, optional `research/`, and context manifests (`implement.jsonl`, `check.jsonl`) for sub-agent-capable platforms.
+Every task has its own directory under `.trellis/tasks/{MM-DD-name}/` holding `task.json`, `prd.md`, `review.zh-CN.md` (generated after planning, before user confirmation), optional `design.md`, optional `implement.md`, optional `research/`, and context manifests (`implement.jsonl`, `check.jsonl`) for sub-agent-capable platforms.
 
 ```bash
 # Task lifecycle
@@ -144,7 +144,7 @@ python3 ./.trellis/scripts/get_context.py --mode phase --step <X.Y>  # detailed 
 ## Phase Index
 
 ```
-Phase 1: Plan    → classify, get task-creation consent, then write planning artifacts
+Phase 1: Plan    → classify, get task-creation consent, write planning artifacts, then generate a Chinese review and wait for confirmation
 Phase 2: Execute → implement only after task status is in_progress
 Phase 3: Finish  → verify, update spec, commit, and wrap up
 ```
@@ -160,8 +160,9 @@ Phase 3: Finish  → verify, update spec, commit, and wrap up
 - `prd.md` — requirements, constraints, and acceptance criteria. Do not put technical design or execution checklists here.
 - `design.md` — technical design for complex tasks: boundaries, contracts, data flow, tradeoffs, compatibility, rollout / rollback shape.
 - `implement.md` — execution plan for complex tasks: ordered checklist, validation commands, review gates, and rollback points.
+- `review.zh-CN.md` — mandatory Chinese review for the user, generated from the completed planning artifacts before asking for implementation approval. Include goals, scope, acceptance criteria, the proposed approach, execution steps, validation, risks, dependencies, and decisions needing confirmation. Keep file paths, commands, and technical identifiers exact; this review does not replace the source planning artifacts.
 - `implement.jsonl` / `check.jsonl` — spec and research manifests for sub-agent context. They do not replace `implement.md`.
-- Lightweight tasks may be PRD-only. Complex tasks must have `prd.md`, `design.md`, and `implement.md` before `task.py start`.
+- Lightweight source planning may be PRD-only. Complex tasks must have `prd.md`, `design.md`, and `implement.md`. Every task also requires an up-to-date `review.zh-CN.md` and explicit user confirmation of the reviewed plan before `task.py start`.
 
 ### Parent / Child Task Trees
 
@@ -184,14 +185,15 @@ Complex task: ask the user if you can create a Trellis task and enter the planni
 - 1.1 Requirement exploration `[required · repeatable]` (`prd.md`; complex tasks also need `design.md` + `implement.md`)
 - 1.2 Research `[optional · repeatable]`
 - 1.3 Configure context `[required · once]` — Claude Code, Cursor, OpenCode, Codex, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Grok, Kimi Code (sub-agent-dispatch platforms only; inline platforms skip)
-- 1.4 Activate task `[required · once]` (review gate, then `task.py start`; status → in_progress)
+- 1.4 Chinese review and task activation `[required · once]` (generate `review.zh-CN.md`, present it, wait for explicit user confirmation, then `task.py start`; status → in_progress)
 - 1.5 Completion criteria
 
 <!-- Per-turn breadcrumb: shown throughout Phase 1 (status='planning') -->
 
 [workflow-state:planning]
 Load `trellis-brainstorm`; stay in planning.
-Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start`.
+Lightweight source planning: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`.
+Every task: generate an up-to-date `review.zh-CN.md` in Chinese after planning, present its path/link and key points, then ask for and wait for explicit user confirmation of the current plan before `task.py start` or any implementation. If the plan changes, update the source artifacts and Chinese review, then ask for confirmation again. Silence, elapsed time, task-creation consent, and runner defaults are not plan approval.
 Multi-deliverable scope: consider a parent task plus independently verifiable child tasks; dependencies must be written in child artifacts, not implied by tree position.
 Sub-agent mode: curate `implement.jsonl` and `check.jsonl` as spec/research manifests before start.
 [/workflow-state:planning]
@@ -204,7 +206,8 @@ Sub-agent mode: curate `implement.jsonl` and `check.jsonl` as spec/research mani
 
 [workflow-state:planning-inline]
 Load `trellis-brainstorm`; stay in planning.
-Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start`.
+Lightweight source planning: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`.
+Every task: generate an up-to-date `review.zh-CN.md` in Chinese after planning, present its path/link and key points, then ask for and wait for explicit user confirmation of the current plan before `task.py start` or any implementation. If the plan changes, update the source artifacts and Chinese review, then ask for confirmation again. Silence, elapsed time, task-creation consent, and runner defaults are not plan approval.
 Multi-deliverable scope: consider a parent task plus independently verifiable child tasks; dependencies must be written in child artifacts, not implied by tree position.
 Inline mode: skip jsonl curation; Phase 2 reads artifacts/specs via `trellis-before-dev`.
 [/workflow-state:planning-inline]
@@ -328,7 +331,7 @@ python3 ./.trellis/scripts/get_context.py --mode phase --step <step>
 
 ## Phase 1: Plan
 
-Goal: classify the request, get task-creation consent when a task is needed, and produce the planning artifacts required before implementation.
+Goal: classify the request, get task-creation consent when a task is needed, produce the planning artifacts, then generate a Chinese review and obtain explicit user confirmation before implementation.
 
 #### 1.0 Create task `[required · once]`
 
@@ -454,15 +457,29 @@ Skip this step. Context is loaded directly by the `trellis-before-dev` skill in 
 
 [/codex-inline, Kilo, Antigravity, Devin]
 
-#### 1.4 Activate task `[required · once]`
+#### 1.4 Chinese review and task activation `[required · once]`
 
-After artifact review, flip the task status to `in_progress`:
+Complete this review gate for every task, including lightweight tasks and inline execution:
+
+1. Finish the source planning artifacts. Lightweight source planning may be PRD-only; complex tasks require `prd.md`, `design.md`, and `implement.md`. On sub-agent-dispatch platforms, curate real entries in `implement.jsonl` and `check.jsonl` before preparing the review.
+2. Generate `{TASK_DIR}/review.zh-CN.md` from the completed artifacts, using clear Chinese prose. Cover the following items, scaled to the task's size; mark items that do not apply rather than inventing a design or extra work:
+   - 目标、范围与验收标准
+   - 技术方案与主要取舍（复杂任务对应 `design.md`）
+   - 执行步骤与改动位置（复杂任务对应 `implement.md`）
+   - 验证方式、风险、依赖与回退方式
+   - 需要用户确认的事项
+   Link to the source planning artifacts and preserve exact file paths, commands, and technical identifiers. The Chinese review must faithfully reflect the current plan; it does not replace `prd.md`, `design.md`, or `implement.md`.
+3. Present the review file's path/link and key points in Chinese, then explicitly ask the user to confirm the reviewed plan, for example: `规划已完成，中文审阅版见 <path/link>。请审阅并确认是否按此规划进入实施。`
+4. Wait for explicit user confirmation of this current plan. Keep the task in `planning`; do not run `task.py start`, implement directly, or dispatch an implementation agent while confirmation is pending. Task-creation consent, earlier general authorization, silence, elapsed time, and the 30-second runner-selection defaults do not satisfy this gate.
+5. If the user requests changes or the plan changes before activation, revise the source artifacts and relevant context manifests, regenerate the Chinese review, present the changes, and request confirmation again. Only confirmation of the updated plan opens the gate.
+
+After the user explicitly confirms the reviewed plan, flip the task status to `in_progress`:
 
 ```bash
 python3 ./.trellis/scripts/task.py start <task-dir>
 ```
 
-For lightweight tasks, `prd.md` can be enough. For complex tasks, `prd.md`, `design.md`, and `implement.md` must exist and be reviewed before start. On sub-agent-dispatch platforms, `implement.jsonl` and `check.jsonl` must both have real curated entries before start. Runtime consumers tolerate missing or seed-only manifests for compatibility, but that tolerance is not a planning-ready state.
+Before start, the required source artifacts and the current `review.zh-CN.md` must exist, and the user must have confirmed the reviewed plan. On sub-agent-dispatch platforms, `implement.jsonl` and `check.jsonl` must both have real curated entries. Runtime consumers tolerate missing or seed-only manifests for compatibility, but that tolerance is not a planning-ready state.
 
 After this command succeeds, the breadcrumb auto-switches to `[workflow-state:in_progress]`, and the rest of Phase 2 / 3 follows.
 
@@ -473,7 +490,8 @@ If `task.py start` errors with a session-identity message (no context key from h
 | Condition | Required |
 |------|:---:|
 | `prd.md` exists | ✅ |
-| User confirms task should enter implementation | ✅ |
+| Up-to-date `review.zh-CN.md` exists and has been presented to the user in Chinese | ✅ |
+| User explicitly confirms the current reviewed plan should enter implementation | ✅ |
 | `task.py start` has been run (status = in_progress) | ✅ |
 | `research/` has artifacts (complex tasks) | recommended |
 | `design.md` exists (complex tasks) | ✅ |
@@ -677,7 +695,8 @@ This section is for developers who want to modify the Trellis workflow itself. A
 
 Edit the corresponding step's walkthrough body in the Phase 1 / 2 / 3 sections above. Critical invariants:
 - No active task must triage first and ask for task-creation consent before creating a Trellis task.
-- Planning must distinguish lightweight PRD-only tasks from complex tasks that require `prd.md`, `design.md`, and `implement.md` before start.
+- Source planning must distinguish lightweight PRD-only tasks from complex tasks that require `prd.md`, `design.md`, and `implement.md` before start.
+- Every task must generate and present an up-to-date Chinese `review.zh-CN.md` after planning, then wait for explicit user confirmation of that plan before activation or implementation. Keep both planning breadcrumb blocks synchronized with this gate; changed plans require a refreshed review and renewed confirmation.
 - Every required execution path must keep the Phase 3.4 commit reminder reachable before `/trellis:finish-work`.
 
 All tag blocks live in the `## Phase Index` section above, immediately after each phase summary:
